@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>英语精听神器</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 10px; }
+    .controls { margin-top: 20px; }
+    button { margin: 0 10px; padding: 10px 20px; font-size: 16px; }
+    input[type="file"] { margin-bottom: 20px; }
+    video, audio { margin-top: 20px; max-width: 90vw; }
+    
+    #progressBar {
+      accent-color: #1976d2;
+      background: transparent;
+    }
+    #progressBar::-webkit-slider-runnable-track {
+      background: linear-gradient(to bottom, #1976d2 var(--played, 0%), #ccc var(--played, 0%));
+      border-radius: 8px;
+      position: relative;
+    }
+    #progressBar::-webkit-slider-thumb {
+      background: #1976d2;
+      border: 2px solid #fff;
+      width: 32px;
+      height: 12px;
+      border-radius: 8px;
+      box-shadow: 0 0 2px #888;
+      -webkit-appearance: none;
+      appearance: none;
+      position: relative;
+      z-index: 2;
+    }
+    #progressBar::-moz-range-thumb {
+      background: #1976d2;
+      border: 2px solid #fff;
+    }
+    #progressBar::-moz-range-progress {
+      background-color: #1976d2;
+    }
+    #progressBar::-moz-range-track {
+      background-color: #ccc;
+    }
+    #progressBar::-ms-fill-lower {
+      background: #1976d2;
+    }
+    #progressBar::-ms-fill-upper {
+      background: #ccc;
+    }
+    #progressBar:focus::-webkit-slider-runnable-track {
+      background: #ccc;
+    }
+    
+    .ql-editor {
+      font-size: 20px;
+    }
+    
+    .player-btn {
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      font-size: 18px;
+      margin: 0 2px;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(25,118,210,0.10);
+      transition: background 0.18s, transform 0.08s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      outline: none;
+    }
+    .player-btn:hover {
+      background: #1251a3;
+      transform: scale(1.10);
+      box-shadow: 0 2px 8px rgba(25,118,210,0.18);
+    }
+    .player-btn:active {
+      background: #0d3570;
+      transform: scale(0.96);
+    }
+    
+    .controls {
+      display: flex !important;
+      flex-direction: row !important;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 12px;
+      gap: 8px;
+      width: 100%;
+    }
+    
+    .download-btn {
+      margin-top: 16px;
+      font-size: 18px;
+      padding: 10px 36px;
+      background: #1976d2;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(25,118,210,0.10);
+      transition: background 0.18s, transform 0.08s;
+      outline: none;
+      font-weight: 500;
+      letter-spacing: 1px;
+    }
+    .download-btn:hover {
+      background: #1251a3;
+      transform: scale(1.04);
+      box-shadow: 0 4px 16px rgba(25,118,210,0.18);
+    }
+    .download-btn:active {
+      background: #0d3570;
+      transform: scale(0.97);
+    }
+    
+    .video-bordered {
+      border: 3px solid #1976d2;
+      border-radius: 16px;
+      box-shadow: 0 2px 16px rgba(25,118,210,0.10);
+      background: #fff;
+      margin-bottom: 8px;
+      max-width: 100%;
+      box-sizing: border-box;
+      resize: both;
+      overflow: auto;
+      min-width: 200px;
+      min-height: 120px;
+      max-height: 80vh;
+    }
+    
+    .video-resizable {
+      scrollbar-width: none;
+    }
+    .video-resizable::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+    .video-resizable:hover {
+      scrollbar-width: thin;
+    }
+    .video-resizable:hover::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+      background: #e3edfa;
+    }
+    .video-resizable:hover::-webkit-scrollbar-thumb {
+      background: #b3c6e6;
+      border-radius: 8px;
+    }
+  </style>
+  <link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet">
+</head>
+<body>
+  <!-- <h1 style="margin-top: 10px; margin-bottom: 18px;">英语 精听神器</h1> -->
+  <div style="display:flex; align-items:center; justify-content:center; gap:32px; margin-bottom:8px; flex-wrap:wrap;">
+    <label for="fileInput" id="fileInputLabel" style="display:inline-block; padding:12px 32px; background:#1976d2; color:#fff; border-radius:8px; font-size:18px; cursor:pointer; transition:background 0.2s; box-shadow:0 2px 8px rgba(25,118,210,0.08);">
+      选择音频/视频文件
+    </label>
+    <div id="studyTimerContainer" style="display:flex; align-items:center; gap:18px; font-size:20px;">
+      <span style="color:#1976d2;font-weight:bold;">今日学习</span>
+      <span id="studyTimer" style="font-family:monospace; font-size:22px; background:#e3edfa; color:#1976d2; border-radius:6px; padding:4px 16px; min-width:110px; display:inline-block; letter-spacing:2px;">00:00:00</span>
+      <button id="pauseTimerBtn" class="player-btn" style="width:32px;height:32px;font-size:16px;">⏸️</button>
+      <button id="resetTimerBtn" class="player-btn" style="width:32px;height:32px;font-size:16px;">🔄</button>
+    </div>
+  </div>
+  <input type="file" id="fileInput" accept="audio/mp3,video/mp4" style="display:none;" />
+  <div id="selectedFileName" style="min-height:24px; font-size:16px; color:#1976d2; margin-bottom:16px;"></div>
+  <div id="playerContainer"></div>
+  <div style="width:100vw; text-align:center; color:#888; font-size:15px; margin-top:32px; margin-bottom:1px; letter-spacing:1px; position:fixed; left:0; bottom:0; background:rgba(255,255,255,0.96); z-index:999; padding:8px 0;">
+    版权所有 © 2025 英语精听神器 All Rights Reserved
+  </div>
+  <div style="display: flex; flex-direction: row; justify-content: center; align-items: flex-start; margin: 20px 0 100px 0; border:2px solid #1976d2; border-radius: 18px; box-shadow: 0 4px 24px rgba(25,118,210,0.08); padding: 32px 24px; background: #fafbfc;">
+    <div style="display: flex; flex-direction: column; align-items: center; position: relative; width: 100%;">
+      <div id="quillEditor" style="height:600px;width:1200px;max-width:100%;background:#fff;"></div>
+      <div style="position:absolute; right:32px; bottom:32px; z-index:10; display:flex; gap:12px;">
+        <input type="file" id="importNoteInput" accept=".html,text/html" style="display:none;" />
+        <button id="importNoteBtn" class="download-btn" style="background:#fff; color:#1976d2; border:1.5px solid #1976d2;">导入笔记</button>
+        <button id="downloadNote" class="download-btn">下载笔记并清除</button>
+      </div>
+    </div>
+    <div id="progressBarContainer" style="display:none; position:sticky; top:40px; margin-left:12px; height:560px; display:flex; flex-direction:column; align-items:center;">
+      <div class="controls" id="controls">
+        <button id="backward" class="player-btn" title="后退5秒">⏪</button>
+        <button id="playPause" class="player-btn" title="播放/暂停">▶️</button>
+        <button id="forward" class="player-btn" title="前进5秒">⏩</button>
+      </div>
+      <span id="currentTime" style="margin-bottom:8px;">00:00</span>
+      <input type="range" id="progressBar" value="0" min="0" max="100" step="0.01" style="writing-mode: vertical-lr; -webkit-appearance: slider-vertical; width:32px; height:520px; margin:0;">
+      <span id="duration" style="margin-top:8px;">00:00</span>
+    </div>
+  </div>
+  <script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const playerContainer = document.getElementById('playerContainer');
+    const controls = document.getElementById('controls');
+    const playPauseBtn = document.getElementById('playPause');
+    const backwardBtn = document.getElementById('backward');
+    const forwardBtn = document.getElementById('forward');
+    let player = null;
+    let isPlaying = false;
+    const progressBarContainer = document.getElementById('progressBarContainer');
+    const progressBar = document.getElementById('progressBar');
+    const currentTimeSpan = document.getElementById('currentTime');
+    const durationSpan = document.getElementById('duration');
+
+    fileInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      const fileNameDiv = document.getElementById('selectedFileName');
+      if (file) {
+        fileNameDiv.textContent = '听力材料：' + file.name;
+        localStorage.setItem('lastFileName', file.name);
+      } else {
+        fileNameDiv.textContent = '';
+      }
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      playerContainer.innerHTML = '';
+      controls.style.display = 'block';
+      progressBarContainer.style.display = 'block';
+      isPlaying = false;
+      playPauseBtn.textContent = '▶️ 播放';
+      if (file.type.startsWith('audio/')) {
+        player = document.createElement('audio');
+        player.controls = false;
+        player.src = url;
+        playerContainer.appendChild(player);
+      } else if (file.type.startsWith('video/')) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'video-bordered video-resizable';
+        wrapper.style.resize = 'both';
+        wrapper.style.overflow = 'auto';
+        wrapper.style.display = 'inline-block';
+        wrapper.style.minWidth = '200px';
+        wrapper.style.minHeight = '120px';
+        wrapper.style.maxWidth = '100%';
+        wrapper.style.maxHeight = '80vh';
+        wrapper.style.width = '600px';
+        wrapper.style.height = '340px';
+        player = document.createElement('video');
+        player.controls = false;
+        player.src = url;
+        player.style.width = '100%';
+        player.style.height = '100%';
+        player.style.display = 'block';
+        wrapper.appendChild(player);
+        playerContainer.appendChild(wrapper);
+      } else {
+        playerContainer.innerHTML = '<p>请选择mp3或mp4文件</p>';
+        controls.style.display = 'none';
+        progressBarContainer.style.display = 'none';
+        return;
+      }
+      updateProgressBar();
+      player.addEventListener('timeupdate', updateProgressBar);
+      player.addEventListener('loadedmetadata', updateProgressBar);
+      player.addEventListener('ended', updateProgressBar);
+    });
+
+    playPauseBtn.addEventListener('click', function() {
+      if (!player) return;
+      if (player.paused) {
+        player.play();
+        isPlaying = true;
+        playPauseBtn.textContent = '⏸️ 暂停';
+      } else {
+        player.pause();
+        isPlaying = false;
+        playPauseBtn.textContent = '▶️ 播放';
+      }
+    });
+
+    backwardBtn.addEventListener('click', function() {
+      if (!player) return;
+      player.currentTime = Math.max(0, player.currentTime - 5);
+    });
+
+    forwardBtn.addEventListener('click', function() {
+      if (!player) return;
+      player.currentTime = Math.min(player.duration || player.currentTime + 5, player.currentTime + 5);
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (!player) return;
+      // if (e.key === 'ArrowUp') { //键盘
+      if (e.code === 'Numpad2' ) {
+
+        player.currentTime = Math.max(0, player.currentTime - 5);
+        e.preventDefault();
+      // } else if (e.key === 'ArrowDown') { //键盘
+      } else if (e.code === 'Numpad3') {
+
+        player.currentTime = Math.min(player.duration || player.currentTime + 5, player.currentTime + 5);
+        e.preventDefault();
+      // } else if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey) { //键盘
+      } else if (e.code === 'NumpadEnter') {
+
+        if (player.paused) {
+          player.play();
+          isPlaying = true;
+          playPauseBtn.textContent = '⏸️ 暂停';
+        } else {
+          player.pause();
+          isPlaying = false;
+          playPauseBtn.textContent = '▶️ 播放';
+        }
+        e.preventDefault();
+      }
+    }, true);
+
+    function formatTime(sec) {
+      if (isNaN(sec)) return '00:00';
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+    }
+
+    function setProgressBarPlayed() {
+      if (!player || isNaN(player.duration)) {
+        progressBar.style.setProperty('--played', '0%');
+        return;
+      }
+      const percent = (player.currentTime / player.duration) * 100;
+      progressBar.style.setProperty('--played', percent + '%');
+    }
+
+    function updateProgressBar() {
+      if (!player || isNaN(player.duration)) {
+        currentTimeSpan.textContent = '00:00';
+        durationSpan.textContent = '00:00';
+        progressBar.value = 0;
+        progressBar.max = 100;
+        setProgressBarPlayed();
+        return;
+      }
+      currentTimeSpan.textContent = formatTime(player.currentTime);
+      durationSpan.textContent = formatTime(player.duration);
+      progressBar.max = player.duration;
+      progressBar.value = player.currentTime;
+      setProgressBarPlayed();
+    }
+
+    let isSeeking = false;
+    progressBar.addEventListener('input', function() {
+      isSeeking = true;
+      if (player && !isNaN(player.duration)) {
+        const percent = (parseFloat(progressBar.value) / player.duration) * 100;
+        progressBar.style.setProperty('--played', percent + '%');
+      }
+    });
+    progressBar.addEventListener('change', function() {
+      isSeeking = false;
+      if (player && !isNaN(player.duration)) {
+        player.currentTime = parseFloat(progressBar.value);
+        setProgressBarPlayed();
+      }
+    });
+
+    const LOCAL_KEY = 'listening_note_quill';
+    let quill;
+    window.addEventListener('DOMContentLoaded', function() {
+      quill = new Quill('#quillEditor', {
+        theme: 'snow',
+        placeholder: '在这里输入你的笔记...',
+        modules: {
+          toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['blockquote', 'code-block'],
+            ['image'],
+            ['clean']
+          ]
+        }
+      });
+      const saved = localStorage.getItem(LOCAL_KEY);
+      if (saved !== null) {
+        try {
+          quill.setContents(JSON.parse(saved));
+        } catch(e) {}
+      }
+      setInterval(function() {
+        const data = JSON.stringify(quill.getContents());
+        localStorage.setItem(LOCAL_KEY, data);
+      }, 2000);
+    });
+
+    document.getElementById('downloadNote').addEventListener('click', function() {
+      const html = quill.root.innerHTML;
+      let baseName = localStorage.getItem('lastFileName') || 'note';
+      baseName = baseName.replace(/\.[^/.]+$/, '');
+      const now = new Date();
+      const pad = n => n.toString().padStart(2, '0');
+      const dateStr = `${now.getFullYear().toString().slice(2)}-${pad(now.getMonth()+1)}-${pad(now.getDate())}-${pad(now.getHours())}-${pad(now.getMinutes())}`;
+      const fileName = `${baseName}-${dateStr}.html`;
+      const blob = new Blob([
+        '<!DOCTYPE html><html><head><meta charset="utf-8"><title>笔记</title></head><body>',
+        html,
+        '</body></html>'
+      ], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      localStorage.removeItem(LOCAL_KEY);
+      quill.setText('');
+    });
+
+    const importBtn = document.getElementById('importNoteBtn');
+    const importInput = document.getElementById('importNoteInput');
+    importBtn.addEventListener('click', () => importInput.click());
+    importInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        let html = evt.target.result;
+        const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+        if (bodyMatch) html = bodyMatch[1];
+        quill.root.innerHTML = html;
+      };
+      reader.readAsText(file);
+      importInput.value = '';
+    });
+
+    window.addEventListener('DOMContentLoaded', function() {
+      const lastData = localStorage.getItem('lastFileData');
+      const lastType = localStorage.getItem('lastFileType');
+      const lastName = localStorage.getItem('lastFileName');
+      const fileNameDiv = document.getElementById('selectedFileName');
+      if (lastData && lastType && !player) {
+        if (lastType.startsWith('audio/')) {
+          player = document.createElement('audio');
+          player.controls = false;
+          player.src = lastData;
+          playerContainer.appendChild(player);
+        } else if (lastType.startsWith('video/')) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'video-bordered video-resizable';
+          wrapper.style.resize = 'both';
+          wrapper.style.overflow = 'auto';
+          wrapper.style.display = 'inline-block';
+          wrapper.style.minWidth = '200px';
+          wrapper.style.minHeight = '120px';
+          wrapper.style.maxWidth = '100%';
+          wrapper.style.maxHeight = '80vh';
+          wrapper.style.width = '600px';
+          wrapper.style.height = '340px';
+          player = document.createElement('video');
+          player.controls = false;
+          player.src = lastData;
+          player.style.width = '100%';
+          player.style.height = '100%';
+          player.style.display = 'block';
+          wrapper.appendChild(player);
+          playerContainer.appendChild(wrapper);
+        }
+        if (player) {
+          updateProgressBar();
+          player.addEventListener('timeupdate', updateProgressBar);
+          player.addEventListener('loadedmetadata', updateProgressBar);
+          player.addEventListener('ended', updateProgressBar);
+        }
+        let useName = lastName;
+        if (!useName) {
+          let ext = '';
+          if (lastType.startsWith('audio/')) ext = '.mp3';
+          else if (lastType.startsWith('video/')) ext = '.mp4';
+          useName = 'media' + ext;
+        }
+        localStorage.setItem('lastFileName', useName);
+        fileNameDiv.textContent = '文件：' + useName;
+      }
+    });
+
+    let timerInterval = null;
+    let timerPaused = true;
+    let timerSeconds = 0;
+    const todayKey = 'study_timer_' + new Date().toISOString().slice(0,10);
+    if (localStorage.getItem(todayKey)) {
+      timerSeconds = parseInt(localStorage.getItem(todayKey), 10) || 0;
+    }
+    const timerDisplay = document.getElementById('studyTimer');
+    const pauseBtn = document.getElementById('pauseTimerBtn');
+    const resetBtn = document.getElementById('resetTimerBtn');
+    function updateTimerDisplay() {
+      const h = String(Math.floor(timerSeconds/3600)).padStart(2,'0');
+      const m = String(Math.floor((timerSeconds%3600)/60)).padStart(2,'0');
+      const s = String(timerSeconds%60).padStart(2,'0');
+      timerDisplay.textContent = `${h}:${m}:${s}`;
+    }
+    function startTimer() {
+      if (timerInterval) return;
+      timerInterval = setInterval(() => {
+        if (!timerPaused) {
+          timerSeconds++;
+          updateTimerDisplay();
+          localStorage.setItem(todayKey, timerSeconds);
+        }
+      }, 1000);
+    }
+    function pauseTimer() {
+      timerPaused = !timerPaused;
+      pauseBtn.textContent = timerPaused ? '▶️' : '⏸️';
+    }
+    function resetTimer() {
+      timerSeconds = 0;
+      updateTimerDisplay();
+      localStorage.setItem(todayKey, timerSeconds);
+    }
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', resetTimer);
+    updateTimerDisplay();
+    startTimer();
+    pauseBtn.textContent = '▶️';
+  </script>
+</body>
+</html>
